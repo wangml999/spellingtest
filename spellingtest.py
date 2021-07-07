@@ -12,6 +12,8 @@ import glob
 import json
 import numpy as np
 from scipy.special import softmax
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
 
 dictionary=PyDictionary()
 
@@ -23,15 +25,17 @@ def play_information(text, message_on=False, sound_on=True):
         tts.save('./info.mp3')
         playsound('./info.mp3')
 
-def play_a_word(word, folder='mp3'):
-    fname = f'./{folder}/' + '_'.join(word.split(' ')) + '.mp3'
+def play_a_word(word, accent='co.uk', folder='mp3'):
+    if accent == 'co.uk':
+        fname = f'./{folder}/' + '_'.join(word.split(' ')) + '.mp3'
+    else:
+        fname = f'./{folder}/' + '_'.join(word.split(' ')) + f'.{accent}.mp3'
     if not os.path.exists(fname):
-        tts = gTTS(text=word, lang='en', tld='co.uk')
+        tts = gTTS(text=word, lang='en', tld=accent)
         tts.save(fname)
     playsound(fname)
 
-
-def practice(name, fname, n_words=-1):
+def get_word_list(name, fname):
     if type(fname).__name__ == 'str':
         if os.path.isfile(fname):
             fname = [fname]
@@ -44,7 +48,18 @@ def practice(name, fname, n_words=-1):
             words = list(filter(None, words))
             # w = sorted(words)
         wordlist.extend(words)
+    return wordlist
 
+def get_test_history(name):
+    performance = []
+    for test_file in glob.glob(f'./test/{name}_*'):
+        with open(test_file, 'r') as f:
+            results = json.load(f)
+        performance.append(results)
+
+    return performance
+
+def practice(wordlist, performance, n_words=-1):
     total = 0
     correct = 0
 
@@ -57,9 +72,7 @@ def practice(name, fname, n_words=-1):
     word_dic = {}
     for word in wordlist:
         word_dic[word] = 1.0
-    for test_file in glob.glob(f'./test/{name}_*'):
-        with open(test_file, 'r') as f:
-            results = json.load(f)
+    for results in performance:
         for k in results.keys():
             if results[k] == 'passed':
                 word_dic[k] = word_dic[k] * 0.8
@@ -67,7 +80,6 @@ def practice(name, fname, n_words=-1):
                 word_dic[k] = word_dic[k] * 1.3
             elif results[k] == 'failed':
                 word_dic[k] = word_dic[k] * 2.0
-
 
     p = softmax(list(word_dic.values()))
     if n_words > 0 and n_words < len(wordlist):
@@ -77,6 +89,7 @@ def practice(name, fname, n_words=-1):
 
     test_result = {}
     for i, word in enumerate(test_samples):
+        accent = 'co.uk'
         if i == len(test_samples) - 2:
             if random.random() < 0.3:
                 play_information('almost done. keep going')
@@ -89,7 +102,7 @@ def practice(name, fname, n_words=-1):
                 print(f"{total+1}: ", end='', flush=True)
             # time.sleep(500)
             try:
-                play_a_word(word)
+                play_a_word(word, accent)
             except:
                 print('system error: ' + word)
                 play_information("sorry system error. I don't know how to pronounce this word")
@@ -100,7 +113,15 @@ def practice(name, fname, n_words=-1):
                     print(word, flush=True)
                     test_result[word] = 'failed'
                     break
-                elif x == '.': # repeat audio
+                elif x.startswith('.'): # repeat audio
+                    if x == '.':
+                        accent = 'co.uk'
+                    elif x == '.us':
+                        accent = 'com'
+                    elif x == '.au':
+                        accent = 'com.au'
+                    else:
+                        accent = 'co.uk'
                     continue
                 elif x == '?o': # ask for meaning
                     try:
@@ -148,8 +169,50 @@ if __name__ == '__main__':
     play_information("please make sure you enter your name correctly. your records will be used to optimize your test")
     play_information("what is your name")
     name = input('Enter your name: ')
-    name = '_'.join(name.split())
-    play_information(f"Thank you, how many words do you like to try")
+
+    wordlist = get_word_list(name, fname='./wordlist')
+    performance = get_test_history(name)
+
+    play_information(f"hi {name}. it seems you have done some tests")
+    play_information(f"would you like to see your performance so far?")
+    answer = input('Enter yes or no: ')
+    if answer.lower() == 'yes':
+        # show the word cloud
+        history = get_test_history(name)
+        word_dic = {}
+        for results in performance:
+            for k in results.keys():
+                if not k in word_dic.keys():
+                    word_dic[k] = 1.0
+                if results[k] == 'passed':
+                    word_dic[k] = word_dic[k] * 1.0
+                elif results[k] == 'retried':
+                    word_dic[k] = word_dic[k] * 1.3
+                elif results[k] == 'failed':
+                    word_dic[k] = word_dic[k] * 2.0
+
+        play_information(f"The big words are the ones you missed most.")
+
+        radius = 200
+        x, y = np.ogrid[:radius*2, :radius*2]
+
+        mask = (x - radius) ** 2 + (y - radius) ** 2 > radius ** 2
+        mask = 255 * mask.astype(int)
+
+        wc = WordCloud(background_color="white", max_words=1000, mask=mask)
+        # generate word cloud
+        wc.generate_from_frequencies(word_dic)
+
+        # show
+        plt.imshow(wc, interpolation="bilinear")
+        plt.axis("off")
+        plt.show()
+
+
+
+    # name = '_'.join(name.split())
+    play_information(f"Okay, now let's move on to the test")
+    play_information(f"how many words do you like to try")
 
     while True:
         try:
@@ -159,7 +222,7 @@ if __name__ == '__main__':
             play_information("Not a number. Please try again")
 
     play_information("let's get started")
-    score, results = practice(name=name, fname='./wordlist', n_words=n_words)
+    score, results = practice(wordlist, performance, n_words=n_words)
     os.makedirs('./test', exist_ok=True)
     with open(f'./test/{name}_{time.strftime("%Y%m%d-%H%M%S")}_{n_words}_{score*100:.1f}.json', 'w') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
