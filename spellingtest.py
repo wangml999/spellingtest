@@ -9,6 +9,9 @@ from pydub import AudioSegment
 from pydub.playback import play
 import ety
 import glob
+import json
+import numpy as np
+from scipy.special import softmax
 
 dictionary=PyDictionary()
 
@@ -28,7 +31,7 @@ def play_a_word(word, folder='mp3'):
     playsound(fname)
 
 
-def practice(fname, n_words=-1):
+def practice(name, fname, n_words=-1):
     if type(fname).__name__ == 'str':
         if os.path.isfile(fname):
             fname = [fname]
@@ -38,20 +41,45 @@ def practice(fname, n_words=-1):
     for n in fname:
         with open(n) as f:
             words = f.read().splitlines()
-            w = sorted(words)
+            words = list(filter(None, words))
+            # w = sorted(words)
         wordlist.extend(words)
 
     total = 0
     correct = 0
+
+    # choose n_words from word list
+    # use historical test performance to adjust the probablity words being selected
+    # passed word - low probability - normal * 80%
+    # retried word - mid probabliy - normal * 130%
+    # untested word - high probabliy - normal
+    # failed word - higher probabliy - normal * 200%
+    word_dic = {}
+    for word in wordlist:
+        word_dic[word] = 1.0
+    for test_file in glob.glob(f'./test/{name}_*'):
+        with open(test_file, 'r') as f:
+            results = json.load(f)
+        for k in results.keys():
+            if results[k] == 'passed':
+                word_dic[k] = word_dic[k] * 0.8
+            elif results[k] == 'retried':
+                word_dic[k] = word_dic[k] * 1.3
+            elif results[k] == 'failed':
+                word_dic[k] = word_dic[k] * 2.0
+
+
+    p = softmax(list(word_dic.values()))
     if n_words > 0 and n_words < len(wordlist):
-        test_samples = random.sample(wordlist, n_words)
+        test_samples = np.random.choice(list(word_dic.keys()), size=n_words, replace=False, p=p)
     else:
         test_samples = wordlist
 
+    test_result = {}
     for i, word in enumerate(test_samples):
         if i == len(test_samples) - 2:
-            if random.random() < 0.5:
-                play_information('We are almost done. keep going')
+            if random.random() < 0.3:
+                play_information('almost done. keep going')
 
         retried = False
         while True:
@@ -70,6 +98,7 @@ def practice(fname, n_words=-1):
             if x.lower().strip() != word.lower().strip():
                 if x == '?':  # give up. ask for answer
                     print(word, flush=True)
+                    test_result[word] = 'failed'
                     break
                 elif x == '.': # repeat audio
                     continue
@@ -103,17 +132,23 @@ def practice(fname, n_words=-1):
                         play_information(congrat)
                 if not retried:
                     correct += 1
+                    test_result[word] = 'passed'
+                else:
+                    test_result[word] = 'retried'
                 break
 
         total += 1
-    return correct/total
+
+    return correct/total, test_result
 
 
 if __name__ == '__main__':
     os.makedirs('./mp3', exist_ok=True)
     play_information("welcome to spelling test")
+    play_information("please make sure you enter your name correctly. your records will be used to optimize your test")
     play_information("what is your name")
     name = input('Enter your name: ')
+    name = '_'.join(name.split())
     play_information(f"Thank you, how many words do you like to try")
 
     while True:
@@ -124,7 +159,11 @@ if __name__ == '__main__':
             play_information("Not a number. Please try again")
 
     play_information("let's get started")
-    score = practice('./wordlist', n_words)
+    score, results = practice(name=name, fname='./wordlist', n_words=n_words)
+    os.makedirs('./test', exist_ok=True)
+    with open(f'./test/{name}_{time.strftime("%Y%m%d-%H%M%S")}_{n_words}_{score*100:.1f}.json', 'w') as f:
+        json.dump(results, f, ensure_ascii=False, indent=4)
+
     play_information("Test completed")
     msg = f'final score is {score*100:.1f}%'
-    play_information(msg)
+    play_information(msg, message_on=True)
