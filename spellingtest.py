@@ -8,6 +8,7 @@ from io import BytesIO
 from pydub import AudioSegment
 from pydub.playback import play
 import ety
+import glob
 
 dictionary=PyDictionary()
 
@@ -29,7 +30,10 @@ def play_a_word(word, folder='mp3'):
 
 def practice(fname, n_words=-1):
     if type(fname).__name__ == 'str':
-        fname = [fname]
+        if os.path.isfile(fname):
+            fname = [fname]
+        elif os.path.isdir(fname):
+            fname = glob.glob(fname+'/*.txt')
     wordlist = []
     for n in fname:
         with open(n) as f:
@@ -63,7 +67,7 @@ def practice(fname, n_words=-1):
                 play_information("sorry system error. I don't know how to pronounce this word")
                 break
             x = input('')
-            if x.lower() != word.lower():
+            if x.lower().strip() != word.lower().strip():
                 if x == '?':  # give up. ask for answer
                     print(word, flush=True)
                     break
@@ -120,8 +124,7 @@ if __name__ == '__main__':
             play_information("Not a number. Please try again")
 
     play_information("let's get started")
-    score = practice(['./wordlist/spelling_bee_page_1.txt',
-              './wordlist/spelling_bee_page_2.txt'], n_words)
+    score = practice('./wordlist', n_words)
     play_information("Test completed")
     msg = f'final score is {score*100:.1f}%'
     play_information(msg)
