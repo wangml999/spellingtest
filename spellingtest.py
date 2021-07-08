@@ -173,40 +173,41 @@ if __name__ == '__main__':
     wordlist = get_word_list(name, fname='./wordlist')
     performance = get_test_history(name)
 
-    play_information(f"hi {name}. it seems you have done some tests")
-    play_information(f"would you like to see your performance so far?")
-    answer = input('Enter yes or no: ')
-    if answer.lower() == 'yes':
-        # show the word cloud
-        history = get_test_history(name)
-        word_dic = {}
-        for results in performance:
-            for k in results.keys():
-                if not k in word_dic.keys():
-                    word_dic[k] = 1.0
-                if results[k] == 'passed':
-                    word_dic[k] = word_dic[k] * 1.0
-                elif results[k] == 'retried':
-                    word_dic[k] = word_dic[k] * 1.3
-                elif results[k] == 'failed':
-                    word_dic[k] = word_dic[k] * 2.0
+    if random.random() < 0.3:
+        play_information(f"hi {name}. it seems you have done some tests")
+        play_information(f"would you like to see your performance so far?")
+        answer = input('Enter yes or no: ')
+        if answer.lower() == 'yes':
+            # show the word cloud
+            history = get_test_history(name)
+            word_dic = {}
+            for results in performance:
+                for k in results.keys():
+                    if not k in word_dic.keys():
+                        word_dic[k] = 1.0
+                    if results[k] == 'passed':
+                        word_dic[k] = word_dic[k] * 1.0
+                    elif results[k] == 'retried':
+                        word_dic[k] = word_dic[k] * 1.3
+                    elif results[k] == 'failed':
+                        word_dic[k] = word_dic[k] * 2.0
 
-        play_information(f"The big words are the ones you missed most.")
+            play_information(f"The big words are the ones you missed most.")
 
-        radius = 200
-        x, y = np.ogrid[:radius*2, :radius*2]
+            radius = 200
+            x, y = np.ogrid[:radius*2, :radius*2]
 
-        mask = (x - radius) ** 2 + (y - radius) ** 2 > radius ** 2
-        mask = 255 * mask.astype(int)
+            mask = (x - radius) ** 2 + (y - radius) ** 2 > radius ** 2
+            mask = 255 * mask.astype(int)
 
-        wc = WordCloud(background_color="white", max_words=1000, mask=mask)
-        # generate word cloud
-        wc.generate_from_frequencies(word_dic)
+            wc = WordCloud(background_color="white", max_words=1000, mask=mask)
+            # generate word cloud
+            wc.generate_from_frequencies(word_dic)
 
-        # show
-        plt.imshow(wc, interpolation="bilinear")
-        plt.axis("off")
-        plt.show()
+            # show
+            plt.imshow(wc, interpolation="bilinear")
+            plt.axis("off")
+            plt.show()
 
 
 
