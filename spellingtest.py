@@ -173,7 +173,7 @@ if __name__ == '__main__':
     wordlist = get_word_list(name, fname='./wordlist')
     performance = get_test_history(name)
 
-    if random.random() < 0.3:
+    if len(performance) > 3 and random.random() < 0.3:
         play_information(f"hi {name}. it seems you have done some tests")
         play_information(f"would you like to see your performance so far?")
         answer = input('Enter yes or no: ')
