@@ -75,7 +75,8 @@ apparatus
 astrophysics
 audiovisual
 automation
-barometric calculus
+barometric
+calculus
 catalyst
 chemistry
 circutry

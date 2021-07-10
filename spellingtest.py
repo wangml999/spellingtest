@@ -211,9 +211,10 @@ if __name__ == '__main__':
 
 
 
-    # name = '_'.join(name.split())
-    play_information(f"Okay, now let's move on to the test")
-    play_information(f"how many words do you like to try")
+    if random.random() < 0.5:
+        play_information(f"Thank you, how many words do you like to try?")
+    else:
+        play_information(f"Thank you, please enter number of test words.")
 
     while True:
         try:
@@ -223,7 +224,7 @@ if __name__ == '__main__':
             play_information("Not a number. Please try again")
 
     play_information("let's get started")
-    score, results = practice(wordlist, performance, n_words=n_words)
+    score, results = practice(wordlist=wordlist, performance=performance, n_words=n_words)
     os.makedirs('./test', exist_ok=True)
     with open(f'./test/{name}_{time.strftime("%Y%m%d-%H%M%S")}_{n_words}_{score*100:.1f}.json', 'w') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
@@ -231,3 +232,6 @@ if __name__ == '__main__':
     play_information("Test completed")
     msg = f'final score is {score*100:.1f}%'
     play_information(msg, message_on=True)
+    if score>0.9:
+        if random.random() < 0.5:
+            play_information('you have done an amazing job')
