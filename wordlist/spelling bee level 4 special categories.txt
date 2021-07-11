@@ -1,7 +1,4 @@
 acoustic
-alimerick
-linguist
-metronome
 allegory
 antonym
 audience
@@ -17,6 +14,9 @@ documentary
 dolce
 exposition
 falsetto
+limerick
+linguist
+metronome
 operetta
 philharmonic
 Rembrandt

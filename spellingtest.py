@@ -14,7 +14,7 @@ import numpy as np
 from scipy.special import softmax
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
-
+import sys
 dictionary=PyDictionary()
 
 def play_information(text, message_on=False, sound_on=True):
@@ -70,22 +70,34 @@ def practice(wordlist, performance, n_words=-1):
     # untested word - high probabliy - normal
     # failed word - higher probabliy - normal * 200%
     word_dic = {}
+    visited = {}
     for word in wordlist:
         word_dic[word] = 1.0
+        visited[word] = 0
     for results in performance:
         for k in results.keys():
+            visited[k] += 1
             if results[k] == 'passed':
                 word_dic[k] = word_dic[k] * 0.8
             elif results[k] == 'retried':
-                word_dic[k] = word_dic[k] * 1.3
+                word_dic[k] = word_dic[k] * 1.2
             elif results[k] == 'failed':
-                word_dic[k] = word_dic[k] * 2.0
+                word_dic[k] = word_dic[k] * 1.5
+
+    for k in wordlist:
+        word_dic[k] = word_dic[k] + 0.1 * np.log(len(performance)+1) / (visited[k]+1)
 
     p = softmax(list(word_dic.values()))
     if n_words > 0 and n_words < len(wordlist):
         test_samples = np.random.choice(list(word_dic.keys()), size=n_words, replace=False, p=p)
     else:
         test_samples = wordlist
+
+    new_words_count = 0
+    for k in test_samples:
+        if visited[k] == 0:
+            new_words_count += 1
+    play_information(f'this test has {new_words_count} new words')
 
     test_result = {}
     for i, word in enumerate(test_samples):
@@ -166,7 +178,8 @@ def practice(wordlist, performance, n_words=-1):
 if __name__ == '__main__':
     os.makedirs('./mp3', exist_ok=True)
     play_information("welcome to spelling test")
-    play_information("please make sure you enter your name correctly. your records will be used to optimize your test")
+    if random.random() < 0.3:
+        play_information("please make sure you enter your name correctly. your records will be used to optimize your test")
     play_information("what is your name")
     name = input('Enter your name: ')
 
@@ -175,39 +188,41 @@ if __name__ == '__main__':
 
     if len(performance) > 3 and random.random() < 0.3:
         play_information(f"hi {name}. it seems you have done some tests")
-        play_information(f"would you like to see your performance so far?")
+        play_information(f"would you like to check your performance?")
         answer = input('Enter yes or no: ')
         if answer.lower() == 'yes':
+            sys.argv.append(name)
+            exec(open('stats.py').read())
             # show the word cloud
-            history = get_test_history(name)
-            word_dic = {}
-            for results in performance:
-                for k in results.keys():
-                    if not k in word_dic.keys():
-                        word_dic[k] = 1.0
-                    if results[k] == 'passed':
-                        word_dic[k] = word_dic[k] * 1.0
-                    elif results[k] == 'retried':
-                        word_dic[k] = word_dic[k] * 1.3
-                    elif results[k] == 'failed':
-                        word_dic[k] = word_dic[k] * 2.0
-
-            play_information(f"The big words are the ones you missed most.")
-
-            radius = 200
-            x, y = np.ogrid[:radius*2, :radius*2]
-
-            mask = (x - radius) ** 2 + (y - radius) ** 2 > radius ** 2
-            mask = 255 * mask.astype(int)
-
-            wc = WordCloud(background_color="white", max_words=1000, mask=mask)
-            # generate word cloud
-            wc.generate_from_frequencies(word_dic)
-
-            # show
-            plt.imshow(wc, interpolation="bilinear")
-            plt.axis("off")
-            plt.show()
+            # history = get_test_history(name)
+            # word_dic = {}
+            # for results in performance:
+            #     for k in results.keys():
+            #         if not k in word_dic.keys():
+            #             word_dic[k] = 1.0
+            #         if results[k] == 'passed':
+            #             word_dic[k] = word_dic[k] * 0.8
+            #         elif results[k] == 'retried':
+            #             word_dic[k] = word_dic[k] * 1.3
+            #         elif results[k] == 'failed':
+            #             word_dic[k] = word_dic[k] * 2.0
+            #
+            # play_information(f"The big words are the ones you missed most.")
+            #
+            # radius = 200
+            # x, y = np.ogrid[:radius*2, :radius*2]
+            #
+            # mask = (x - radius) ** 2 + (y - radius) ** 2 > radius ** 2
+            # mask = 255 * mask.astype(int)
+            #
+            # wc = WordCloud(background_color="white", max_words=1000, mask=mask)
+            # # generate word cloud
+            # wc.generate_from_frequencies(word_dic)
+            #
+            # # show
+            # plt.imshow(wc, interpolation="bilinear")
+            # plt.axis("off")
+            # plt.show()
 
 
 
